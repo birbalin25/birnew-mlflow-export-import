@@ -11,18 +11,26 @@ See sample JSON export files [here](README_export_format.md#sample-export-json-f
 
 ### Tools
 
-| MLflow Object | Documentation | Code |
-|-------|-------|---|
-| Registered Model | [export-model](#export-registered-model) | [code](mlflow_export_import/model/export_model.py) |
-|    | [import-model](#import-registered-model) | [code](mlflow_export_import/model/import_model.py) |
-| Model Version | [export-model-version](#export-model-version) | [code](mlflow_export_import/model_version/export_model_version.py) |
-|    | [import-model-version](#import-model-version) | [code](mlflow_export_import/model_version/import_model_version.py) |
-|    | [copy-model-version](README_copy.md#copy-model-version) | [code](mlflow_export_import/copy/copy_model_version.py) |
-| Experiment | [export-experiment](#export-experiment) | [code](mlflow_export_import/experiment/export_experiment.py) |
-|    | [import-experiment](#import-experiment) | [code](mlflow_export_import/experiment/import_experiment.py) |
-| Run | [export-run](#export-run) | [code](mlflow_export_import/run/export_run.py) |
-|  | [import-run](#import-run) | [code](mlflow_export_import/run/import_run.py) |
-|  | [copy-run](README_copy.md#copy-run) | [code](mlflow_export_import/copy/copy_run.py) |
+| MLflow Object | Documentation                                         | Code                                                             |
+|-----|-------------------------------------------------------|------------------------------------------------------------------|
+| Registered Model | [export-model](#export-registered-model)              | [code](mlflow_export_import/model/export_model.py)               |
+|     | [import-model](#import-registered-model)              | [code](mlflow_export_import/model/import_model.py)               |
+| Model Version | [export-model-version](#export-model-version)         | [code](mlflow_export_import/model_version/export_model_version.py) |
+|     | [import-model-version](#import-model-version)         | [code](mlflow_export_import/model_version/import_model_version.py) |
+|     | [copy-model-version](README_copy.md#copy-model-version) | [code](mlflow_export_import/copy/copy_model_version.py)          |
+| Experiment | [export-experiment](#export-experiment)               | [code](mlflow_export_import/experiment/export_experiment.py)     |
+|     | [import-experiment](#import-experiment)               | [code](mlflow_export_import/experiment/import_experiment.py)     |
+| Run | [export-run](#export-run)                             | [code](mlflow_export_import/run/export_run.py)                   |
+|     | [import-run](#import-run)                             | [code](mlflow_export_import/run/import_run.py)                   |
+|     | [copy-run](README_copy.md#copy-run)                   | [code](mlflow_export_import/copy/copy_run.py)                    |
+| Logged Model | [export-logged-model](#export-logged-model)           | [code](mlflow_export_import/logged_model/export_logged_model.py) |
+| | [import-logged-model](#import-logged-model)           | [code](mlflow_export_import/logged_model/import_logged_model.py) |
+| Trace | [export-trace](#export-trace)                         | [code](mlflow_export_import/trace/export_trace.py)               |
+|| [import-trace](#import-trace)                         |  [code](mlflow_export_import/trace/import_trace.py)              |
+| Prompt | [export-prompt](#export-prompt) | [code](mlflow_export_import/prompt/export_prompt.py) |
+|  | [import-prompt](#import-prompt) | [code](mlflow_export_import/prompt/import_prompt.py) |
+| Evaluation Dataset | [export-evaluation-dataset](#export-evaluation-dataset) | [code](mlflow_export_import/evaluation_dataset/export_evaluation_dataset.py) |
+|  | [import-evaluation-dataset](#import-evaluation-dataset) | [code](mlflow_export_import/evaluation_dataset/import_evaluation_dataset.py) |
 
 ## Experiment Tools
 
@@ -43,7 +51,12 @@ Options:
   --export-permissions BOOLEAN   Export Databricks permissions.  [default:
                                  False]
   --run-start-time TEXT          Only export runs started after this UTC time
-                                 (inclusive). Format: YYYY-MM-DD.
+                                 (inclusive). Format: YYYY-MM-DD or 
+                                 YYYY-MM-DD HH:MM:SS.
+  --runs-until TEXT                   Only export runs started before this UTC time
+                                 (exclusive). Use with --run-start-time to
+                                 define a time window. Format: YYYY-MM-DD or
+                                 YYYY-MM-DD HH:MM:SS.
   --export-deleted-runs BOOLEAN  Export deleted runs.  [default: False]
   --check-nested-runs BOOLEAN    Check if run in the 'run-ids' option is a
                                  parent of nested runs and export all the
@@ -86,6 +99,36 @@ export-experiment \
   --check-nested-runs True 
 ```
 
+##### Export runs within a specific time window (daily):
+```
+export-experiment \
+  --experiment sklearn-wine \
+  --output-dir out \
+  --run-start-time 2024-01-01 \
+  --runs-until 2024-02-01
+```
+
+This exports all runs that started between 2024-01-01 (inclusive) and 2024-02-01 (exclusive).
+
+##### Export runs within a specific time window (hourly chunks):
+```
+# Export runs from first 4 hours of the day
+export-experiment \
+  --experiment sklearn-wine \
+  --output-dir out/chunk1 \
+  --run-start-time "2024-01-01 00:00:00" \
+  --runs-until "2024-01-01 04:00:00"
+
+# Export runs from next 4 hours
+export-experiment \
+  --experiment sklearn-wine \
+  --output-dir out/chunk2 \
+  --run-start-time "2024-01-01 04:00:00" \
+  --runs-until "2024-01-01 08:00:00"
+```
+
+This allows incremental exports in smaller time chunks (e.g., 4-hour intervals).
+
 #### Databricks export examples
 
 See [Access the MLflow tracking server from outside Databricks](https://docs.databricks.com/applications/mlflow/access-hosted-tracking-server.html).
@@ -104,7 +147,7 @@ export-experiment \
 
 The [export directory](samples/oss_mlflow/single/experiments/basic) contains a [JSON export file](samples/oss_mlflow/single/experiments/basic/experiment.json)
 for the experiment and a subdirectory for each run.
-The [run directory](samples/oss_mlflow/single/experiments/basic/eb66c160957d4a28b11d3f1b968df9cd) contains a [JSON export file](samples/oss_mlflow/single/experiments/basic/eb66c160957d4a28b11d3f1b968df9cd/run.json) containing run metadata and an artifact folder directory.
+The [run directory](samples/oss_mlflow/single/experiments/basic/runs/eb66c160957d4a28b11d3f1b968df9cd) contains a [JSON export file](samples/oss_mlflow/single/experiments/basic/runs/eb66c160957d4a28b11d3f1b968df9cd/run.json) containing run metadata and an artifact folder directory.
 
 Sample export directory
 ```
@@ -212,7 +255,7 @@ Produces a directory with the following structure:
 ```
 
 Sample run.json files:
-[OSS](samples/oss_mlflow/single/experiments/basic/eb66c160957d4a28b11d3f1b968df9cd/run.json)
+[OSS](samples/oss_mlflow/single/experiments/basic/runs/eb66c160957d4a28b11d3f1b968df9cd/run.json)
 \- [Databricks](samples/databricks/single/experiments/notebook_experiments/workspace_notebook/f7816bc76f254f22ab25549a7c2c9b06/run.json).
 
 
@@ -492,4 +535,227 @@ Options:
   --import-metadata BOOLEAN       Import registered model and experiment
                                   metadata (description and tags).  [default:
                                   False]
+```
+
+## Logged Models Tools
+
+### Export Logged Model
+Export a Logged Model to a directory. Accepts Logged model id
+
+#### Usage
+```
+ export-logged-model --help
+ 
+ Options:
+  --model-id TEXT    Logged Model ID.   [required]
+  --output-dir TEXT  Output directory.  [required] 
+```
+#### Example
+
+```
+export-logged-model \ 
+    --model-id m-c4302dcdcded475fa84a20988964a2aa \
+    --output-dir out
+```
+
+### Import Logged Model
+Imports a Logged Model from a directory. Reads the manifest file to import the logged model and its run if associated.
+
+The run will be created for the logged models if associated to import metrics, datasets, inputs.
+
+#### Usage
+```
+ import-logged-model --help
+ 
+ Options:
+  --input-dir TEXT        Input directory.  [required]
+  --experiment-name TEXT  Destination experiment name.  [required]
+  --mlmodel-fix BOOLEAN   Add correct run ID in destination MLmodel artifact.
+                          Can be expensive for deeply nested artifacts.
+                          [default: True]
+```
+#### Example
+
+```
+import-logged-model \ 
+    --input-dir exported-logged-model \
+    --experiment-name logged-model
+```
+
+## Traces Tools
+
+### Export Trace
+Export a Trace to a directory. Accepts request id(trace id)
+
+#### Usage
+```
+ export-trace --help
+ 
+Options:
+  --request-id TEXT  Request ID.  [required]
+  --output-dir TEXT  Output directory.  [required]
+  --help             Show this message and exit.
+```
+#### Example
+
+```
+export-trace \ 
+    --request-id 821b21beaf2045b9afe6d4d4ae59c029 \
+    --output-dir out
+```
+
+### Import Trace
+Imports a trace from a directory. Reads the manifest file to import the trace to an experiment
+
+#### Usage
+```
+ import-trace --help
+ 
+Options:
+  --input-dir TEXT        Input directory.  [required]
+  --experiment-name TEXT  Destination experiment name.  [required]
+  --help                  Show this message and exit.
+```
+#### Example
+
+```
+import-trace \ 
+    --input-dir exported_trace \
+    --experiment-name trace
+```
+
+## Prompt Tools
+
+Export and import prompts from the MLflow Prompt Registry (MLflow 2.21.0+).
+
+**Note:** Prompt Registry support requires MLflow 2.21.0 or higher.
+
+### Export Prompt
+
+Export a single prompt version to a directory.
+
+Source: [export_prompt.py](mlflow_export_import/prompt/export_prompt.py).
+
+#### Usage
+
+```
+export-prompt --help
+
+Options:
+  --prompt-name TEXT     Name of the prompt to export.  [required]
+  --prompt-version TEXT  Version of the prompt to export.  [required]
+  --output-dir TEXT      Output directory.  [required]
+```
+
+#### Example
+
+```
+export-prompt \
+  --prompt-name my-greeting-prompt \
+  --prompt-version 1 \
+  --output-dir out
+```
+
+### Import Prompt
+
+Import a prompt from an exported directory.
+
+Source: [import_prompt.py](mlflow_export_import/prompt/import_prompt.py).
+
+#### Usage
+
+```
+import-prompt --help
+
+Options:
+  --input-dir TEXT    Input directory containing exported prompt.  [required]
+  --prompt-name TEXT  Optional new name for the imported prompt. If not
+                     specified, uses original name.
+```
+
+#### Examples
+
+##### Import with original name
+```
+import-prompt --input-dir out
+```
+
+##### Import with new name
+```
+import-prompt \
+  --input-dir out \
+  --prompt-name my-new-prompt-name
+```
+
+
+## Evaluation Dataset Tools
+
+Export and import GenAI evaluation datasets (MLflow 3.4.0+).
+
+**Note:** Evaluation dataset support requires MLflow 3.4.0 or higher and a SQL-based tracking backend (SQLite, PostgreSQL, MySQL). FileStore is not supported.
+
+### Export Evaluation Dataset
+
+Export a single evaluation dataset to a directory.
+
+Source: [export_evaluation_dataset.py](mlflow_export_import/evaluation_dataset/export_evaluation_dataset.py).
+
+#### Usage
+
+```
+export-evaluation-dataset --help
+
+Options:
+  --dataset-name TEXT  Name of the evaluation dataset to export (mutually exclusive with --dataset-id).
+  --dataset-id TEXT    ID of the evaluation dataset to export (mutually exclusive with --dataset-name).
+  --output-dir TEXT    Output directory.  [required]
+
+Note: Either --dataset-name or --dataset-id must be provided (mutually exclusive).
+```
+
+#### Examples
+
+##### Export by dataset name
+```
+export-evaluation-dataset \
+  --dataset-name wine-quality-eval \
+  --output-dir out
+```
+
+##### Export by dataset ID
+```
+export-evaluation-dataset \
+  --dataset-id abc123 \
+  --output-dir out
+```
+
+### Import Evaluation Dataset
+
+Import an evaluation dataset from an exported directory.
+
+Source: [import_evaluation_dataset.py](mlflow_export_import/evaluation_dataset/import_evaluation_dataset.py).
+
+#### Usage
+
+```
+import-evaluation-dataset --help
+
+Options:
+  --input-dir TEXT     Input directory containing exported evaluation dataset.  [required]
+  --dataset-name TEXT  Optional new name for the imported dataset. If not
+                      specified, uses original name.
+```
+
+#### Examples
+
+##### Import with original name
+```
+import-evaluation-dataset --input-dir out
+```
+
+##### Import with new name
+```
+import-evaluation-dataset \
+  --input-dir out \
+  --dataset-name my-new-dataset-name
 ```

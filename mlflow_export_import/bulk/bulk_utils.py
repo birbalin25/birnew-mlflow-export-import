@@ -1,10 +1,14 @@
-from mlflow_export_import.common.iterators import SearchRegisteredModelsIterator
-from mlflow_export_import.common.iterators import SearchExperimentsIterator
-from mlflow_export_import.common import utils   #birbal added
+from mlflow_export_import.common import utils
+from mlflow_export_import.common.iterators import (
+    SearchRegisteredModelsIterator,
+    SearchExperimentsIterator,
+    SearchLoggedModelsIterator,
+    SearchTracesIterator
+)
 
-_logger = utils.getLogger(__name__)     #birbal added
+_logger = utils.getLogger(__name__)
 
-def _get_list(names, func_list, task_index=None, num_tasks=None): #birbal updated
+def _get_list(names, func_list, task_index=None, num_tasks=None):
     """
     Returns a list of entities specified by the 'names' filter.
     :param names: Filter of desired list of entities. Can be: "all", comma-delimited string, list of entities or trailing wildcard "*".
@@ -27,11 +31,11 @@ def _get_list(names, func_list, task_index=None, num_tasks=None): #birbal update
         else:
             return names.split(",")
         
-    elif isinstance(names, dict):   #birbal added
+    elif isinstance(names, dict):
         return names
     
     else:
-        return get_subset_list(names, task_index, num_tasks) #birbal updated
+        return get_subset_list(names, task_index, num_tasks)
 
 
 
@@ -42,7 +46,7 @@ def get_experiment_ids(mlflow_client, experiment_ids):
     return _get_list(experiment_ids, list_entities)
 
 
-def get_model_names(mlflow_client, model_names,task_index=None,num_tasks=None): #birbal updated
+def get_model_names(mlflow_client, model_names,task_index=None,num_tasks=None):
     def list_entities():
         return [ model.name for model in SearchRegisteredModelsIterator(mlflow_client) ]
     return _get_list(model_names, list_entities, task_index, num_tasks) #birbal updated
@@ -62,3 +66,8 @@ def get_subset_list(fulllist, task_index, num_tasks):
 
     return fulllist[start:end]
 
+def get_logged_models(mlflow_client, experiment_ids):
+    return list(SearchLoggedModelsIterator(mlflow_client, experiment_ids))
+
+def get_traces(mlflow_client, experiment_ids, run_id):
+    return list(SearchTracesIterator(mlflow_client, experiment_ids, run_id))

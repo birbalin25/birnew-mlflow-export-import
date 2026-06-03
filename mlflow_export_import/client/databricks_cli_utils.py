@@ -1,5 +1,4 @@
-from databricks_cli.configure import provider
-from mlflow.utils.databricks_utils import is_in_databricks_runtime
+from mlflow.utils.databricks_utils import get_databricks_host_creds
 
 
 def get_host_token_for_profile(profile=None):
@@ -7,13 +6,9 @@ def get_host_token_for_profile(profile=None):
     :param profile: Databricks profile as in ~/.databrickscfg or None for the default profile
     :return: tuple of (host, token) from the ~/.databrickscfg profile
     """
-    if profile:
-        cfg = provider.get_config_for_profile(profile)
-        if not cfg.host and is_in_databricks_runtime():
-            cfg = provider.get_config() 
-    else:
-        cfg = provider.get_config() 
-    return (cfg.host, cfg.token)
+    server_uri = f"databricks://{profile}" if profile else "databricks"
+    creds = get_databricks_host_creds(server_uri)
+    return (creds.host, creds.token)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from setuptools import setup, find_packages
 CORE_REQUIREMENTS = [
     "mlflow-skinny[databricks]",
     "databricks-cli==0.18.0",
+    "packaging>=20.0",        # For version parsing and compatibility
     "pandas>=1.5.2",
     "tabulate==0.9.0",
     "wheel"
@@ -43,7 +44,7 @@ setup(
     entry_points = {
         "console_scripts": [
             "export-all = mlflow_export_import.bulk.export_all:main",
-            "import-all = mlflow_export_import.bulk.import_models:main",
+            "import-all = mlflow_export_import.bulk.import_all:main",
             "export-models = mlflow_export_import.bulk.export_models:main",
             "import-models = mlflow_export_import.bulk.import_models:main",
             "export-run = mlflow_export_import.run.export_run:main",
@@ -62,7 +63,23 @@ setup(
             "get-model-signature = mlflow_export_import.tools.get_model_signature:main",
             "set-model-signature = mlflow_export_import.tools.set_model_signature:main",
             "list-model-versions-without-signatures = mlflow_export_import.tools.list_model_versions_without_signatures:main",
-            "http-client = mlflow_export_import.client.http_client:main"
+            "http-client = mlflow_export_import.client.http_client:main",
+            "export-logged-models = mlflow_export_import.bulk.export_logged_models:main",
+            "export-logged-model = mlflow_export_import.logged_model.export_logged_model:main",
+            "import-logged-models = mlflow_export_import.bulk.import_logged_models:main",
+            "import-logged-model = mlflow_export_import.logged_model.import_logged_model:main",
+            "export-traces = mlflow_export_import.bulk.export_traces:main",
+            "import-traces = mlflow_export_import.bulk.import_traces:main",
+            "export-trace = mlflow_export_import.trace.export_trace:main",
+            "import-trace = mlflow_export_import.trace.import_trace:main",
+            "export-prompt = mlflow_export_import.prompt.export_prompt:main",
+            "import-prompt = mlflow_export_import.prompt.import_prompt:main",
+            "export-prompts = mlflow_export_import.bulk.export_prompts:main",
+            "import-prompts = mlflow_export_import.bulk.import_prompts:main",
+            "export-evaluation-dataset = mlflow_export_import.evaluation_dataset.export_evaluation_dataset:main",
+            "import-evaluation-dataset = mlflow_export_import.evaluation_dataset.import_evaluation_dataset:main",
+            "export-evaluation-datasets = mlflow_export_import.bulk.export_evaluation_datasets:main",
+            "import-evaluation-datasets = mlflow_export_import.bulk.import_evaluation_datasets:main"
          ]
       }
 )

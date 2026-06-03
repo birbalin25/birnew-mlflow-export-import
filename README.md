@@ -19,35 +19,67 @@ Last updated: _2024-05-10_
   * Enable an MLOps pipeline by promoting MLflow objects (runs, experiments or registered models) from one MLflow tracking server (Datbricks workspace) to another.
     * Copy a the best run (model) from the development to the test tracking server.
     * After the run passes tests, then promote it to the production tracking server.
-  * Share and collaborate with other data scientists in the same or another MLflow tracking server (Databricks workspace).
+  * Share and collaborate with other data scientists in the same or another MLflow tracking server (Databricks workspace, Amazon SageMaker MLflow).
     * For example, copy an experiment from one user to another.
   * Backup your MLflow objects to external storage so they can be restored if needed.
   * Disaster recovery. Save your MLflow objects to external storage so they can be replicated to another tracking server.
-  * Supports registered models in both the Databricks Workspace Model Registry and Unity Catalog Model Registry.
+  * Supports registered models in both the Databricks Workspace Model Registry, Unity Catalog Model Registry and Amazon SageMaker Studio.
 
 ### MLflow Export Import scenarios
 
-|Source tracking server | Destination tracking server | Note |
-|-------|------------|---|
-| Open source | Open source | common |
+|Source tracking server | Destination tracking server | Note        |
+|-------|------------|-------------|
+| Open source | Open source | common      |
 | Open source | Databricks | less common |
-| Databricks | Databricks |common |
-| Databricks | Open source | rare |
+| Databricks | Databricks | common      |
+| Databricks | Open source | rare        |
+| Open source | AWS SageMaker MLflow | less common |
+| AWS SageMaker MLflow | AWS SageMaker MLflow | common      |
 
 ### MLflow Objects
 
 These are the MLflow objects and their attributes that can be exported.
 
-| Object | REST | Python | SQL |
-|----|---|---|--|
-| Run | [link]( https://mlflow.org/docs/latest/rest-api.html#run) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.Run) | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L166) |
-| Experiment | [link](https://mlflow.org/docs/latest/rest-api.html#mlflowexperiment) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.Experiment) | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L37) |
+| Object | REST     | Python                                                                                                                | SQL |
+|----|----------|-----------------------------------------------------------------------------------------------------------------------|--|
+| Run | [link]( https://mlflow.org/docs/latest/rest-api.html#run) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.Run)                            | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L166) |
+| Experiment | [link](https://mlflow.org/docs/latest/rest-api.html#mlflowexperiment) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.Experiment)                     | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L37) |
 | Registered Model | [link](https://mlflow.org/docs/latest/rest-api.html#registeredmodel) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.model_registry.RegisteredModel) | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L152) |
-| Registered Model Version | [link](https://mlflow.org/docs/latest/rest-api.html#modelversion) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.model_registry.ModelVersion) | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L102) |
+| Registered Model Version | [link](https://mlflow.org/docs/latest/rest-api.html#modelversion) | [link](https://mlflow.org/docs/latest/python_api/mlflow.entities.html#mlflow.entities.model_registry.ModelVersion)    | [link](https://github.com/amesar/mlflow-resources/blob/master/database_schemas/schema_mlflow_2.0.1.sql#L102) |
+| Logged Model | [link](https://github.com/mlflow/mlflow/blob/v3.0.0/mlflow/protos/service.proto#L612) | [link](https://mlflow.org/docs/latest/api_reference/python_api/mlflow.entities.html#mlflow.entities.LoggedModel)                                                                                                              | |
+| Trace | [link](https://github.com/mlflow/mlflow/blob/v2.14.0/mlflow/protos/service.proto#L459) | [link](https://mlflow.org/docs/latest/api_reference/python_api/mlflow.entities.html#mlflow.entities.Trace) | |
+| Prompt | [link](https://mlflow.org/docs/latest/llms/prompt-engineering/index.html) | [link](https://mlflow.org/docs/latest/python_api/mlflow.genai.html) | - |
+| Evaluation Dataset | [link](https://mlflow.org/docs/latest/genai/index.html) | [link](https://mlflow.org/docs/latest/python_api/mlflow.genai.html) | - |
 
 MLflow Export Import provides rudimentary capabilities for tracking lineage of the imported Mlflow objects
 by having the option save the original MLflow object attributes in the imported target environment.
 See [README_governance](README_governance.md).
+
+### Amazon SageMaker MLflow Migration
+
+MLflow Export Import supports seamless migration of MLflow objects between various SageMaker MLflow environments and other MLflow tracking servers.
+
+<p align="center"><img src="diagrams/SageMaker_MLflow_App_Architecture.png" width="900" height="600"/></p>
+<p align="center">Figure 1: Migration to SageMaker MLflow App</p>
+
+<br>
+
+<p align="center"><img src="diagrams/SageMaker_MLflow_Tracking_Server.png" width="900" height="600"/></p>
+<p align="center">Figure 2: Migration to SageMaker MLflow Tracking Server</p>
+
+**Key Benefits:**
+* Compatible with SageMaker MLflow App and SageMaker MLflow Tracking Server
+* Preserves core MLflow objects (experiments, runs, metrics, params, tags, traces, logged models, evaluation datasets and registered models)
+* Supports migration from older MLflow versions (<3.0) to newer versions
+* Cross-environment portability between self-hosted and SageMaker tracking servers
+* Maintains artifact storage connections between source and destination systems
+* Enables transitions between different MLflow environments:
+  * From self-hosted MLflow to SageMaker MLflow Tracking server or SageMaker MLflow App
+  * From SageMaker MLflow Tracking Server to SageMaker MLflow Tracking Server or SageMaker MLflow App
+* Flexibility to migrate data in and out of SageMaker MLflow as needed
+
+**Sample Implementation:**
+For a complete example of SageMaker MLflow migration, see: [SageMaker MLflow Migration Sample](https://github.com/aws-samples/sample-aiops-on-amazon-sagemakerai/tree/main/operations/sagemaker-mlflow-migration)
 
 ## Tools Overview
 

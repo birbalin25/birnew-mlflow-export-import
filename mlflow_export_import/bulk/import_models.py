@@ -2,6 +2,7 @@
 Imports models and their experiments and runs.
 """
 
+import re
 import os
 import time
 import json
@@ -76,10 +77,16 @@ def import_models(
         target_model_catalog, #birbal added
         target_model_schema     #birbal added
     )
+    
     duration = round(time.time()-start_time, 1)
-    dct = { "duration": duration, "experiments_import": exp_info, "models_import": model_res }
+    dct = { 
+        "duration": duration, 
+        "experiments_import": exp_info, 
+        "models_import": model_res
+    }
     _logger.info("\nImport report:")
     _logger.info(f"{json.dumps(dct,indent=2)}\n")
+    return dct
 
 
 def _flatten_run_info_map(exp_run_info_map):
@@ -177,6 +184,7 @@ def _import_models(mlflow_client,
                 model_name=rename_utils.build_full_model_name(target_model_catalog, target_model_schema, model_name)
             _logger.info(f"model name AFTER rename : '{model_name}'")   #birbal added
             
+            # validate_model_name(model_name)
             executor.submit(all_importer.import_model,
                model_name = model_name,
                input_dir = dir,
@@ -186,6 +194,15 @@ def _import_models(mlflow_client,
 
     duration = round(time.time()-start_time, 1)
     return { "models": len(model_names), "duration": duration }
+
+
+def validate_model_name(model_name):
+    pattern = r"^[a-zA-Z0-9](-*[a-zA-Z0-9]){0,56}$"
+    if not re.match(pattern, model_name):
+        _logger.warning(
+            f"The model name does match the pattern {pattern} and may not import "
+            "correctly for some environments."
+        )
 
 
 @click.command()

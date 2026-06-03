@@ -23,7 +23,9 @@ from mlflow_export_import.common import utils, io_utils, model_utils
 from mlflow_export_import.common.timestamp_utils import adjust_timestamps
 from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.run.export_run import export_run
-import ast #birbal added
+import ast
+from mlflow_export_import.model.model_utils import _extract_model_id
+from mlflow_export_import.logged_model.export_logged_model import export_logged_model
 
 _logger = utils.getLogger(__name__)
 
@@ -49,7 +51,7 @@ def export_model(
         export_deleted_runs = False,
         notebook_formats = None,
         mlflow_client = None,
-        result_queue = None    #birbal added
+        result_queue = None
     ):
     """
     :param model_name: Registered model name.
@@ -76,38 +78,38 @@ def export_model(
     opts = Options(stages, versions, export_latest_versions, export_deleted_runs, export_version_model, export_permissions, notebook_formats)
 
     try:
-        _export_model(mlflow_client, model_name, output_dir, opts, result_queue) #birbal added result_queue
+        _export_model(mlflow_client, model_name, output_dir, opts, result_queue)
         return True, model_name
     except RestException as e:
-        err_msg = { "model": model_name, "RestException": str(e.json)  }    #birbal string casted
+        err_msg = { "model": model_name, "RestException": str(e.json)  } 
         if e.json.get("error_code") == "RESOURCE_DOES_NOT_EXIST":
             _logger.error({ **{"message": "Model does not exist"}, **err_msg})
         else:
             _logger.error({**{"message": "Model cannot be exported"}, **err_msg})
             import traceback
             traceback.print_exc()
-        err_msg["status"] = "failed"     #birbal added        
-        result_queue.put(err_msg)  #birbal added
+        err_msg["status"] = "failed"        
+        result_queue.put(err_msg)
         return False, model_name
     except Exception as e:
         _logger.error({ "model": model_name, "Exception": str(e) })   
-        err_msg = { "model": model_name, "status": "failed","Exception": str(e)  }   #birbal string casted        
-        result_queue.put(err_msg)  #birbal added
+        err_msg = { "model": model_name, "status": "failed","Exception": str(e)  }        
+        result_queue.put(err_msg)
         # import traceback
         # traceback.print_exc()
         return False, model_name
 
 
-def _export_model(mlflow_client, model_name, output_dir, opts, result_queue = None):    #birbal added result_queue
+def _export_model(mlflow_client, model_name, output_dir, opts, result_queue = None): 
     ori_versions = model_utils.list_model_versions(mlflow_client, model_name, opts.export_latest_versions)
-    _logger.info(f"TOTAL MODELS VERSIONS TO EXPORT FOR MODEL {model_name}: {len(ori_versions)}") #birbal added
+    _logger.info(f"TOTAL MODELS VERSIONS TO EXPORT FOR MODEL {model_name}: {len(ori_versions)}")
 
     msg = "latest" if opts.export_latest_versions else "all"
     _logger.info(f"Exporting model '{model_name}': found {len(ori_versions)} '{msg}' versions")
 
     model = model_utils.get_registered_model(mlflow_client, model_name, opts.export_permissions)
 
-    versions, failed_versions = _export_versions(mlflow_client, model, ori_versions, output_dir, opts, result_queue) #birbal added result_queue
+    versions, failed_versions = _export_versions(mlflow_client, model, ori_versions, output_dir, opts, result_queue)
 
     _adjust_model(model, versions)
 
@@ -136,7 +138,7 @@ def _export_model(mlflow_client, model_name, output_dir, opts, result_queue = No
         _logger.warning(f"Exported {len(versions)}/{len(ori_versions)} '{msg}' versions for model '{model_name}' AFTER applying the FIX(replaced < and > with double quote). Else it will throw this exception due to the presence of < and > in the dict value of key deployment_job_state. Exception : {str(e)} which will cause issues during MODEL IMPORT")
 
 
-def _export_versions(mlflow_client, model_dct, versions, output_dir, opts, result_queue = None):    #birbal added result_queue
+def _export_versions(mlflow_client, model_dct, versions, output_dir, opts, result_queue = None):
     aliases = model_dct.get("aliases", [])
     version_aliases = {}
     [ version_aliases.setdefault(x["version"], []).append(x["alias"]) for x in aliases ] # map of version => its aliases
@@ -144,16 +146,16 @@ def _export_versions(mlflow_client, model_dct, versions, output_dir, opts, resul
     output_versions, failed_versions = ([], [])
     for j,vr in enumerate(versions):
         if not model_utils.is_unity_catalog_model(model_dct["name"]) and vr.current_stage and (len(opts.stages) > 0 and not vr.current_stage.lower() in opts.stages):
-            _logger.warning(f"MODEL VERSION EXPORT SKIPPED. Current model stage:{vr.current_stage} does not match with Input stages passed:{opts.stages}  ") #birbal
+            _logger.warning(f"MODEL VERSION EXPORT SKIPPED. Current model stage:{vr.current_stage} does not match with Input stages passed:{opts.stages}  ")
             continue
         if len(opts.versions) > 0 and not vr.version in opts.versions:
             continue
-        _export_version(mlflow_client, vr, output_dir, version_aliases.get(vr.version,[]), output_versions, failed_versions, j, len(versions), opts, result_queue) #birbal added result_queue
+        _export_version(mlflow_client, vr, output_dir, version_aliases.get(vr.version,[]), output_versions, failed_versions, j, len(versions), opts, result_queue)
     output_versions.sort(key=lambda x: x["version"], reverse=False)
     return output_versions, failed_versions
 
 
-def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, failed_versions, j, num_versions, opts, result_queue = None):  #birbal added result_queue
+def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, failed_versions, j, num_versions, opts, result_queue = None):
     _output_dir = os.path.join(output_dir, vr.run_id)
     msg = { "name": vr.name, "version": vr.version, "stage": vr.current_stage, "aliases": aliases }
     _logger.info(f"Exporting model verson {j+1}/{num_versions}: {msg} to '{_output_dir}'")
@@ -174,6 +176,15 @@ def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, fai
             result_queue = result_queue, #birbal added
             vr = vr #birbal added
         )
+
+        if "models" in vr.source:
+            model_id = _extract_model_id(vr.source)
+            export_logged_model(
+                model_id = model_id,
+                output_dir = os.path.join(output_dir, model_id),
+                mlflow_client=mlflow_client
+            )
+
         if not run and not opts.export_deleted_runs:
             failed_msg = { "message": "deleted run",  "version": vr_dct }
             failed_versions.append(failed_msg)
@@ -182,7 +193,7 @@ def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, fai
             output_versions.append(vr_dct)
 
     except RestException as e:
-        err_msg = { "model": vr.name, "version": vr.version, "run_id": vr.run_id, "RestException": str(e.json)  }    #birbal string casted
+        err_msg = { "model": vr.name, "version": vr.version, "run_id": vr.run_id, "RestException": str(e.json)  }
         if e.json.get("error_code") == "RESOURCE_DOES_NOT_EXIST":
             err_msg = { **{"message": "Version run probably does not exist"}, **err_msg}
             _logger.error(f"Version export failed (1): {err_msg}")
@@ -195,14 +206,14 @@ def _export_version(mlflow_client, vr, output_dir, aliases, output_versions, fai
         failed_msg = { "version": vr_dct, "RestException": e.json  }
         failed_versions.append(failed_msg)
 
-        err_msg["status"] = "failed" #birbal added
+        err_msg["status"] = "failed"
         if result_queue:
-            result_queue.put(err_msg)   #birbal added
+            result_queue.put(err_msg)
     
     except Exception as e:   
-        err_msg = { "model": vr.name, "version": vr.version, "run_id": vr.run_id, "status":"failed", "Exception": str(e)  }  #birbal string casted
+        err_msg = { "model": vr.name, "version": vr.version, "run_id": vr.run_id, "status":"failed", "Exception": str(e)  }
         if result_queue:
-            result_queue.put(err_msg)   #birbal added
+            result_queue.put(err_msg)
         
 
 

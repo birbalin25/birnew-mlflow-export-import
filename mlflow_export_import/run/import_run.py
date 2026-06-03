@@ -7,7 +7,7 @@ import click
 import base64
 
 from mlflow.entities.lifecycle_stage import LifecycleStage
-from mlflow.entities import RunStatus
+from mlflow.entities import Dataset, DatasetInput, InputTag, RunStatus
 from mlflow.utils.mlflow_tags import MLFLOW_PARENT_RUN_ID
 
 from mlflow_export_import.common.click_options import (
@@ -21,6 +21,7 @@ from mlflow_export_import.common import utils, mlflow_utils, io_utils
 from mlflow_export_import.common import filesystem as _fs
 from mlflow_export_import.common import MlflowExportImportException
 from mlflow_export_import.client.client_utils import create_mlflow_client, create_dbx_client, create_http_client
+from mlflow_export_import.logged_model.import_logged_model import import_logged_model
 from . import run_data_importer
 from . import run_utils
 import mlflow.utils.databricks_utils as db_utils    #birbal added
@@ -39,7 +40,8 @@ def import_run(
         mlmodel_fix = True,
         mlflow_client = None,
         exp = None,
-        notebook_user_mapping = None    #birbal
+        notebook_user_mapping = None,
+        import_logged_models = False
     ):
     """
     Imports a run into the specified experiment.
@@ -53,6 +55,7 @@ def import_run(
                             Source user ID is ignored when importing into
                             Databricks since setting it is not allowed.
     :param dst_notebook_dir: Databricks destination workspace directory for notebook import.
+    :param import_logged_models: Import logged models into destination object.
     :param mlflow_client: MLflow client.
     :return: The run and its parent run ID if the run is a nested run.
     """
@@ -90,14 +93,37 @@ def import_run(
             use_src_user_id,
             in_databricks
         )
-        _import_inputs(http_client, src_run_dct, run_id)
+        _import_inputs(mlflow_client, src_run_dct, run_id)
 
         path = _fs.mk_local_path(os.path.join(input_dir, "artifacts"))
         if os.path.exists(path):
             mlflow_client.log_artifacts(run_id, path)
         if mlmodel_fix:
             run_utils.update_mlmodel_run_id(mlflow_client, run_id)
-        mlflow_client.set_terminated(run_id, RunStatus.to_string(RunStatus.FINISHED))
+
+        if "model_inputs" in src_run_dct["inputs"] and import_logged_models:
+            for model in src_run_dct["inputs"]["model_inputs"]:
+                import_logged_model(
+                    input_dir = os.path.join(input_dir, model['model_id']),
+                    experiment_name = experiment_name,
+                    run_id = run.info_run_id,
+                    mlflow_client = mlflow_client,
+                    model_type = "input",
+                    step = model["step"],
+                )
+
+        if "outputs" in src_run_dct and import_logged_models:
+            for model in src_run_dct["outputs"]["model_outputs"]:
+                import_logged_model(
+                    input_dir = os.path.join(input_dir, model['model_id']),
+                    experiment_name = experiment_name,
+                    run_id = run.info.run_id,
+                    mlflow_client = mlflow_client,
+                    model_type="output",
+                    step=model["step"],
+                )
+        default_status = RunStatus.to_string(RunStatus.FINISHED)
+        mlflow_client.set_terminated(run_id, src_run_dct.get("info", default_status).get("status", default_status))
         run = mlflow_client.get_run(run_id)
         if src_run_dct["info"]["lifecycle_stage"] == LifecycleStage.DELETED:
             mlflow_client.delete_run(run.info.run_id)
@@ -219,10 +245,17 @@ def update_notebook_lineage(mlflow_client,run_id,dst_notebook_path):    #birbal 
         mlflow_client.set_tag(run_id, "mlflow.databricks.notebookPath", dst_notebook_path)
         mlflow_client.set_tag(run_id, "mlflow.databricks.webappURL", creds.host)
 
-def _import_inputs(http_client, src_run_dct, run_id):
-    inputs = src_run_dct.get("inputs")
-    dct = { "run_id": run_id, "datasets": inputs }
-    http_client.post("runs/log-inputs", dct)
+# def _import_inputs(http_client, src_run_dct, run_id):
+#     inputs = src_run_dct.get("inputs")
+#     dct = { "run_id": run_id, "datasets": inputs }
+#     http_client.post("runs/log-inputs", dct)
+
+def _import_inputs(mlflow_client, src_run_dct, run_id):
+    inputs = src_run_dct.get("inputs", {}).get("dataset_inputs", [])
+    if not inputs:
+        return
+    dataset_inputs = [DatasetInput(Dataset.from_dictionary(input['dataset']), [InputTag.from_dictionary(tag) for tag in input['tags']]) for input in inputs]
+    mlflow_client.log_inputs(run_id=run_id, datasets=dataset_inputs)
 
 
 @click.command()
@@ -254,7 +287,8 @@ def main(input_dir,
         import_source_tags = import_source_tags,
         dst_notebook_dir = dst_notebook_dir,
         use_src_user_id = use_src_user_id,
-        mlmodel_fix = mlmodel_fix
+        mlmodel_fix = mlmodel_fix,
+        import_logged_models = True
     )
 
 

@@ -64,7 +64,15 @@ def opt_get_model_version_download_uri(function):
 
 def opt_run_start_time(function):
     function = click.option("--run-start-time",
-        help="Only export runs started after this UTC time (inclusive). Format: YYYY-MM-DD.",
+        help="Only export runs started after this UTC time (inclusive). Format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.",
+        type=str,
+        required=False
+    )(function)
+    return function
+
+def opt_until(function):
+    function = click.option("--runs-until",
+        help="Only export runs started before this UTC time (exclusive). Use with --run-start-time to define a time window. Format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS.",
         type=str,
         required=False
     )(function)
@@ -245,6 +253,68 @@ def opt_verbose(function):
     function = click.option("--verbose",
         type=bool,
         help="Verbose.",
+        default=False,
+        show_default=True
+    )(function)
+    return function
+
+def opt_experiment_ids(function):
+    function = click.option("--experiment-ids",
+        help="List of experiment IDs (comma delimited). \
+                For example, '1,2'. 'all' will export all logged model from all experiments.",
+        type=str,
+        required=True
+        )(function)
+    return function
+
+def opt_model_id(function):
+    function = click.option("--model-id",
+        help="Logged Model ID. ",
+        type=str,
+        required=True
+    )(function)
+    return function
+
+def opt_import_model_version(function):
+    function = click.option("--import-model-version",
+        help="Import Registered model version.",
+        type=bool,
+        default=False,
+        show_default=True
+    )(function)
+    return function
+
+def opt_request_id(function):
+    function = click.option("--request-id",
+        help="Request ID.",
+        type=str,
+        required=True
+    )(function)
+    return function
+
+# == evaluation datasets
+
+def opt_evaluation_datasets(function):
+    function = click.option("--evaluation-datasets",
+        help="Evaluation dataset names: 'all' for all datasets, comma-delimited list (e.g., 'dataset1,dataset2'), \
+or file path ending with '.txt' containing dataset names (one per line).",
+        type=str,
+        required=True
+    )(function)
+    return function
+
+def opt_evaluation_datasets_experiment_ids(function):
+    function = click.option("--experiment-ids",
+        help="Comma-separated list of experiment IDs to filter datasets. Only used when --evaluation-datasets is 'all'.",
+        type=str,
+        required=False
+    )(function)
+    return function
+
+def opt_delete_evaluation_dataset(function):
+    function = click.option("--delete-evaluation-dataset",
+        help="Delete existing evaluation dataset before importing.",
+        type=bool,
         default=False,
         show_default=True
     )(function)

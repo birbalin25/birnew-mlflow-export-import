@@ -8,12 +8,13 @@
 # MAGIC * `1. Output directory` - shared directory between source and destination workspaces.
 # MAGIC * `2. Stages` - comma seperated stages to be exported.
 # MAGIC * `3. Export latest versions` - export all or just the "latest" versions.
-# MAGIC * `4. Run start date` - Export runs after this UTC date (inclusive). Example: `2023-04-05`.
-# MAGIC * `5. Export permissions` - export Databricks permissions.
-# MAGIC * `6. Export deleted runs`
-# MAGIC * `7. Export version MLflow model`
-# MAGIC * `8. Notebook formats`
-# MAGIC * `9. Use threads`
+# MAGIC * `4. Run start date` - Export runs after this UTC date (inclusive). Format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS. Example: `2023-04-05` or `2023-04-05 08:00:00`.
+# MAGIC * `5. Until date` - Export runs before this UTC date (exclusive). Use with Run start date to define a time window. Format: YYYY-MM-DD or YYYY-MM-DD HH:MM:SS. Example: `2023-05-01` or `2023-04-05 12:00:00`.
+# MAGIC * `6. Export permissions` - export Databricks permissions.
+# MAGIC * `7. Export deleted runs`
+# MAGIC * `8. Export version MLflow model`
+# MAGIC * `9. Notebook formats`
+# MAGIC * `10. Use threads`
 
 # COMMAND ----------
 
@@ -66,11 +67,13 @@ dbutils.widgets.dropdown("Cloud","azure",["azure","aws","gcp"])
 cloud = dbutils.widgets.get("Cloud")
  
 if run_start_date=="": run_start_date = None
+if until_date=="": until_date = None
 
 print("output_dir:", output_dir)
 print("stages:", stages)
 print("export_latest_versions:", export_latest_versions)
 print("run_start_date:", run_start_date)
+print("until_date:", until_date)
 print("export_permissions:", export_permissions)
 print("task_index:", task_index)
 print("num_tasks:", num_tasks)
@@ -128,6 +131,7 @@ export_all(
     stages = stages,
     export_latest_versions = export_latest_versions,
     run_start_time = run_start_date,
+    until = until_date,
     export_permissions = export_permissions,
     export_deleted_runs = False,
     export_version_model = False,
